@@ -51,7 +51,7 @@ init python:
     #   How fast chickens fall at their default speed.
     # -----------------------------------------------------
     NUM_CHICKENS = 5
-    START_SPEED = 0.5
+    START_SPEED = 2.0
 
     # -----------------------------------------------------
     # IMAGE FILE PATHS
