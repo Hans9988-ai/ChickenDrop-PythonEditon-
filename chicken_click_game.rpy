@@ -240,7 +240,7 @@ init python:
                 # close to a traditional frame-based game loop.
                 self.startY[i] += self.speed[i] * 60 * dt
                 i += 1
-           class ChickenPowerUpSystem(object):
+    class ChickenPowerUpSystem(object):
         # -------------------------------------------------
         # This class manages the collectible power-up.
         #
