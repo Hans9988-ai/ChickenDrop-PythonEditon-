@@ -1,0 +1,144 @@
+# =========================================================
+# Kevin Dowd
+# =========================================================
+# chicken_click_game.rpy
+# =========================================================
+# This is the main mini-game file.
+#
+# What it does:
+# - creates falling chickens
+# - lets the player click chickens for points
+# - uses a power-up that changes the chicken sprite
+# - gives more points while boost mode is active
+# - ends the round if a chicken reaches the bottom
+# - shows a replay screen with YES / NO
+#
+# This file expects:
+# - chicken_powerup_system.rpy to also exist
+# - your image files to be inside the Ren'Py game folder
+# =========================================================
+
+
+init python:
+    import random
+
+    # -----------------------------------------------------
+    # GAME AREA SETTINGS
+    # -----------------------------------------------------
+    # These control the size of the mini-game play area.
+    # Keep these matched to your intended background size.
+    # -----------------------------------------------------
+    GAME_WIDTH = 800
+    GAME_HEIGHT = 600
+
+    # -----------------------------------------------------
+    # CHICKEN SETTINGS
+    # -----------------------------------------------------
+    # NUM_CHICKENS:
+    #   How many chickens fall at the same time.
+    #
+    # START_SPEED:
+    #   The falling speed used when a chicken is spawned
+    #   or reset after being clicked.
+    # -----------------------------------------------------
+    NUM_CHICKENS = 5
+    START_SPEED = 0.5
+
+    # -----------------------------------------------------
+    # IMAGE FILES
+    # -----------------------------------------------------
+    # Replace these with your own filenames.
+    #
+    # Example:
+    # NORMAL_CHICKEN_IMAGE = "images/chicken_normal.png"
+    # POWERED_CHICKEN_IMAGE = "images/chicken_boosted.png"
+    # POWERUP_IMAGE = "images/powerup_star.png"
+    # -----------------------------------------------------
+    NORMAL_CHICKEN_IMAGE = "chicken.png"
+    POWERED_CHICKEN_IMAGE = "golden_chicken.png"
+    POWERUP_IMAGE = "powerup.png"
+
+    # -----------------------------------------------------
+    # BACKGROUND COLORS
+    # -----------------------------------------------------
+    # These are simple fallback colors.
+    # You can replace them with background images later.
+    # -----------------------------------------------------
+    PLAY_BG_COLOR = "#000000"
+    REPLAY_BG_COLOR = "#c80000"
+
+    # -----------------------------------------------------
+    # DISPLAY SIZES
+    # -----------------------------------------------------
+    # These are the on-screen sizes Ren'Py will use.
+    # They do not need to exactly match the source image size.
+    # -----------------------------------------------------
+    CHICKEN_WIDTH = 96
+    CHICKEN_HEIGHT = 96
+
+    POWERUP_WIDTH = 72
+    POWERUP_HEIGHT = 72
+ # -----------------------------------------------------
+    # SCORE VALUES
+    # -----------------------------------------------------
+    # NORMAL_CHICKEN_POINTS:
+    #   How many points a normal chicken is worth.
+    #
+    # POWERED_CHICKEN_POINTS:
+    #   How many points a chicken is worth while the
+    #   power-up boost is active.
+    # -----------------------------------------------------
+    NORMAL_CHICKEN_POINTS = 1
+    POWERED_CHICKEN_POINTS = 3
+
+
+    class ChickenClickGame(object):
+        # -------------------------------------------------
+        # This class stores the whole state of one round.
+        #
+        # It replaces the old Pygame loop variables like:
+        # - startX
+        # - startY
+        # - speed
+        # - replayscreen
+        # -------------------------------------------------
+        def __init__(self):
+            # Best score is kept even when the round resets.
+            self.best_score = 0
+            self.reset_game()
+
+        def reset_game(self):
+            # -------------------------------------------------
+            # Starts a fresh round.
+            #
+            # This:
+            # - clears the old chickens
+            # - resets the score
+            # - turns off the replay screen
+            # - creates new falling chickens
+            # - resets the power-up system
+            # -------------------------------------------------
+            self.startX = []
+            self.startY = []
+            self.speed = []
+
+            self.replayscreen = False
+            self.score = 0
+
+            i = 0
+            while i < NUM_CHICKENS:
+                # Random horizontal position inside screen.
+                self.startX.append(random.randint(0, GAME_WIDTH - CHICKEN_WIDTH))
+
+                # Spawn above the screen so the chicken falls in.
+                self.startY.append(0 - random.randint(CHICKEN_HEIGHT, CHICKEN_HEIGHT * 2))
+
+                # Give each chicken the normal starting speed.
+                self.speed.append(START_SPEED)
+                i += 1
+
+            # Reset the power-up state for the new round.
+            if "powerup_system" in globals() and powerup_system is not None:
+                powerup_system.reset()
+
+        def reset_chicken(self, i):
