@@ -3,30 +3,39 @@
 # =========================================================
 # chicken_click_game.rpy
 # =========================================================
-# This is the main mini-game file.
+# Single-file Chicken Click Game for Ren'Py 8.5.2
 #
-# What it does:
-# - creates falling chickens
-# - lets the player click chickens for points
-# - uses a power-up that changes the chicken sprite
-# - gives more points while boost mode is active
-# - ends the round if a chicken reaches the bottom
-# - shows a replay screen with YES / NO
+# What this file includes:
+# - falling chickens
+# - clickable chickens for points
+# - random power-up spawn
+# - power-up changes chicken sprite temporarily
+# - boosted chickens give more points
+# - replay screen with YES / NO
 #
-# This file expects:
-# - chicken_powerup_system.rpy to also exist
-# - your image files to be inside the Ren'Py game folder
+# This file is meant to be edited in VS Code / Visual Studio
+# first, then copied into your Ren'Py project's game folder.
+#
+# IMPORTANT:
+# This is a Ren'Py .rpy file, not a normal Python .py file.
+# So edit it in VS Code if you want, but run it through Ren'Py.
 # =========================================================
 
 
+# ---------------------------------------------------------
+# PYTHON / GAME LOGIC SECTION
+# ---------------------------------------------------------
+# Everything inside init python: is Python logic.
+# This is where we define variables, settings, and classes.
+# ---------------------------------------------------------
 init python:
     import random
 
     # -----------------------------------------------------
     # GAME AREA SETTINGS
     # -----------------------------------------------------
-    # These control the size of the mini-game play area.
-    # Keep these matched to your intended background size.
+    # These define the size of the mini-game area.
+    # If you later use a background image, try to match it.
     # -----------------------------------------------------
     GAME_WIDTH = 800
     GAME_HEIGHT = 600
@@ -35,24 +44,24 @@ init python:
     # CHICKEN SETTINGS
     # -----------------------------------------------------
     # NUM_CHICKENS:
-    #   How many chickens fall at the same time.
+    #   How many chickens are falling at once.
     #
     # START_SPEED:
-    #   The falling speed used when a chicken is spawned
-    #   or reset after being clicked.
+    #   How fast chickens fall at their default speed.
     # -----------------------------------------------------
     NUM_CHICKENS = 5
     START_SPEED = 0.5
 
     # -----------------------------------------------------
-    # IMAGE FILES
+    # IMAGE FILE PATHS
     # -----------------------------------------------------
-    # Replace these with your own filenames.
+    # Replace these with your actual filenames.
     #
-    # Example:
-    # NORMAL_CHICKEN_IMAGE = "images/chicken_normal.png"
-    # POWERED_CHICKEN_IMAGE = "images/chicken_boosted.png"
-    # POWERUP_IMAGE = "images/powerup_star.png"
+    # If your images are directly inside /game:
+    #   "chicken.png"
+    #
+    # If they are inside /game/images:
+    #   "images/chicken.png"
     # -----------------------------------------------------
     NORMAL_CHICKEN_IMAGE = "chicken.png"
     POWERED_CHICKEN_IMAGE = "golden_chicken.png"
@@ -61,8 +70,9 @@ init python:
     # -----------------------------------------------------
     # BACKGROUND COLORS
     # -----------------------------------------------------
-    # These are simple fallback colors.
-    # You can replace them with background images later.
+    # These are used for simple testing.
+    # PLAY_BG_COLOR is the main gameplay background.
+    # REPLAY_BG_COLOR is the game over / replay screen.
     # -----------------------------------------------------
     PLAY_BG_COLOR = "#000000"
     REPLAY_BG_COLOR = "#c80000"
@@ -70,53 +80,73 @@ init python:
     # -----------------------------------------------------
     # DISPLAY SIZES
     # -----------------------------------------------------
-    # These are the on-screen sizes Ren'Py will use.
-    # They do not need to exactly match the source image size.
+    # These control how large the sprites appear on screen.
+    # They do not need to match the original file size.
     # -----------------------------------------------------
     CHICKEN_WIDTH = 96
     CHICKEN_HEIGHT = 96
 
     POWERUP_WIDTH = 72
     POWERUP_HEIGHT = 72
- # -----------------------------------------------------
+
+    # -----------------------------------------------------
     # SCORE VALUES
     # -----------------------------------------------------
-    # NORMAL_CHICKEN_POINTS:
-    #   How many points a normal chicken is worth.
-    #
-    # POWERED_CHICKEN_POINTS:
-    #   How many points a chicken is worth while the
-    #   power-up boost is active.
+    # Normal chickens are worth fewer points.
+    # Boosted chickens are worth more points.
     # -----------------------------------------------------
     NORMAL_CHICKEN_POINTS = 1
     POWERED_CHICKEN_POINTS = 3
 
+    # -----------------------------------------------------
+    # POWER-UP TIMING
+    # -----------------------------------------------------
+    # These values control:
+    # - how soon the power-up appears
+    # - how long it stays visible
+    # - how long the boost lasts after pickup
+    # -----------------------------------------------------
+    POWERUP_SPAWN_MIN = 3.0
+    POWERUP_SPAWN_MAX = 6.0
+
+    POWERUP_DESPAWN_MIN = 2.5
+    POWERUP_DESPAWN_MAX = 4.0
+
+    POWERUP_RESPAWN_MIN = 4.0
+    POWERUP_RESPAWN_MAX = 7.0
+
+    POWERUP_BOOST_DURATION = 5.0
+
 
     class ChickenClickGame(object):
         # -------------------------------------------------
-        # This class stores the whole state of one round.
+        # This class stores the full state of the chicken
+        # mini-game.
         #
-        # It replaces the old Pygame loop variables like:
-        # - startX
-        # - startY
-        # - speed
-        # - replayscreen
+        # It tracks:
+        # - chicken positions
+        # - chicken speeds
+        # - score
+        # - best score
+        # - whether the replay screen is active
         # -------------------------------------------------
         def __init__(self):
-            # Best score is kept even when the round resets.
+            # Keep the best score across restarts.
             self.best_score = 0
+
+            # Start the first round immediately.
             self.reset_game()
 
         def reset_game(self):
             # -------------------------------------------------
             # Starts a fresh round.
             #
-            # This:
-            # - clears the old chickens
-            # - resets the score
-            # - turns off the replay screen
-            # - creates new falling chickens
-            # - resets the power-up system
+            # This resets:
+            # - chicken positions
+            # - chicken speeds
+            # - current score
+            # - replay screen state
+            # - power-up system
             # -------------------------------------------------
             self.startX = []
             self.startY = []
@@ -125,20 +155,202 @@ init python:
             self.replayscreen = False
             self.score = 0
 
+            # Create the initial chickens above the screen so
+            # they fall into view.
             i = 0
             while i < NUM_CHICKENS:
-                # Random horizontal position inside screen.
                 self.startX.append(random.randint(0, GAME_WIDTH - CHICKEN_WIDTH))
-
-                # Spawn above the screen so the chicken falls in.
                 self.startY.append(0 - random.randint(CHICKEN_HEIGHT, CHICKEN_HEIGHT * 2))
-
-                # Give each chicken the normal starting speed.
                 self.speed.append(START_SPEED)
                 i += 1
 
-            # Reset the power-up state for the new round.
+            # Reset the power-up system if it exists.
             if "powerup_system" in globals() and powerup_system is not None:
                 powerup_system.reset()
 
         def reset_chicken(self, i):
+            # -------------------------------------------------
+            # Resets one clicked chicken back above the screen
+            # at a new random horizontal position.
+            # -------------------------------------------------
+            self.startX[i] = random.randint(0, GAME_WIDTH - CHICKEN_WIDTH)
+            self.startY[i] = 0 - random.randint(CHICKEN_HEIGHT, CHICKEN_HEIGHT * 2)
+            self.speed[i] = START_SPEED
+
+        def click_chicken(self, i):
+            # -------------------------------------------------
+            # Called when the player clicks a chicken.
+            #
+            # During active play:
+            # - adds points
+            # - updates best score if needed
+            # - sends the clicked chicken back to the top
+            #
+            # During replay screen:
+            # - does nothing
+            # -------------------------------------------------
+            if self.replayscreen:
+                return
+
+            # Check whether the power-up boost is active.
+            if powerup_system and powerup_system.boost_active:
+                self.score += POWERED_CHICKEN_POINTS
+            else:
+                self.score += NORMAL_CHICKEN_POINTS
+
+            # Update session best if current score passed it.
+            if self.score > self.best_score:
+                self.best_score = self.score
+
+            # Reset the clicked chicken.
+            self.reset_chicken(i)
+
+        def update(self, dt):
+            # -------------------------------------------------
+            # Main timer-based update function.
+            #
+            # dt = delta time
+            # This is the amount of time since the previous
+            # update call.
+            #
+            # This function:
+            # - updates power-up timing
+            # - moves chickens downward
+            # - checks if the player lost
+            # -------------------------------------------------
+            if self.replayscreen:
+                return
+
+            # Update the power-up system each frame.
+            if "powerup_system" in globals() and powerup_system is not None:
+                powerup_system.update(dt)
+
+            i = 0
+            while i < NUM_CHICKENS:
+
+                # If any chicken reaches the bottom of the game
+                # area, switch to the replay screen.
+                if self.startY[i] + CHICKEN_HEIGHT > GAME_HEIGHT:
+                    self.replayscreen = True
+                    break
+
+                # Move the chicken downward.
+                # Multiplying by 60 keeps the movement feeling
+                # close to a traditional frame-based game loop.
+                self.startY[i] += self.speed[i] * 60 * dt
+                i += 1
+         class ChickenPowerUpSystem(object):
+        # -------------------------------------------------
+        # This class manages the collectible power-up.
+        #
+        # It handles:
+        # - random spawn timing
+        # - visible item timing
+        # - boost activation
+        # - boost duration countdown
+        # -------------------------------------------------
+        def __init__(self):
+            self.reset()
+
+        def reset(self):
+            # -------------------------------------------------
+            # Restores the power-up system to a clean state.
+            #
+            # active:
+            #   True when the power-up item is visible.
+            #
+            # boost_active:
+            #   True when boosted scoring/chicken sprite mode
+            #   is currently active.
+            # -------------------------------------------------
+            self.active = False
+            self.boost_active = False
+
+            # Position of the visible power-up item.
+            self.x = 0
+            self.y = 0
+
+            # Time until the next power-up appears.
+            self.time_until_spawn = random.uniform(POWERUP_SPAWN_MIN, POWERUP_SPAWN_MAX)
+
+            # Remaining time before a visible power-up vanishes.
+            self.visible_time_left = 0.0
+
+            # Remaining time for active boost mode.
+            self.boost_time_left = 0.0
+
+        def spawn_powerup(self):
+            # -------------------------------------------------
+            # Spawns a power-up at a random screen position.
+            #
+            # The spawn area avoids the very edges so the item
+            # is easier to see and click.
+            # -------------------------------------------------
+            self.active = True
+
+            self.x = random.randint(40, GAME_WIDTH - POWERUP_WIDTH - 40)
+            self.y = random.randint(140, GAME_HEIGHT - POWERUP_HEIGHT - 140)
+
+            # How long the visible item stays on screen.
+            self.visible_time_left = random.uniform(POWERUP_DESPAWN_MIN, POWERUP_DESPAWN_MAX)
+
+        def despawn_powerup(self):
+            # -------------------------------------------------
+            # Removes the visible power-up and starts waiting
+            # for the next spawn.
+            # -------------------------------------------------
+            self.active = False
+            self.visible_time_left = 0.0
+            self.time_until_spawn = random.uniform(POWERUP_RESPAWN_MIN, POWERUP_RESPAWN_MAX)
+
+        def collect_powerup(self):
+            # -------------------------------------------------
+            # Called when the player clicks the power-up item.
+            #
+            # This:
+            # - removes the visible item
+            # - enables boost mode
+            # - starts the boost countdown
+            # -------------------------------------------------
+            if not self.active:
+                return
+
+            self.active = False
+            self.boost_active = True
+            self.visible_time_left = 0.0
+            self.boost_time_left = POWERUP_BOOST_DURATION
+
+        def update(self, dt):
+            # -------------------------------------------------
+            # Updates the power-up every frame.
+            #
+            # Handles:
+            # - active boost countdown
+            # - visible collectible countdown
+            # - waiting for next spawn
+            # -------------------------------------------------
+
+            # If boost mode is active, count it down.
+            if self.boost_active:
+                self.boost_time_left -= dt
+
+                if self.boost_time_left <= 0:
+                    self.boost_active = False
+                    self.boost_time_left = 0.0
+                    self.time_until_spawn = random.uniform(POWERUP_RESPAWN_MIN, POWERUP_RESPAWN_MAX)
+
+            # If the collectible is visible, count down until
+            # it disappears.
+            if self.active:
+                self.visible_time_left -= dt
+
+                if self.visible_time_left <= 0:
+                    self.despawn_powerup()
+
+            # If nothing is visible and boost is not active,
+            # count down to the next spawn.
+            elif not self.boost_active:
+                self.time_until_spawn -= dt
+
+                if self.time_until_spawn <= 0:
+                    self.spawn_powerup()
