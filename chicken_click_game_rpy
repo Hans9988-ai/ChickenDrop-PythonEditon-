@@ -15,6 +15,7 @@
 #
 # This file is meant to be edited in VS Code / Visual Studio
 # first, then copied into your Ren'Py project's game folder.
+# The above was a mental note but will keep in here haha.
 #
 # IMPORTANT:
 # This is a Ren'Py .rpy file, not a normal Python .py file.
@@ -354,3 +355,172 @@ init python:
 
                 if self.time_until_spawn <= 0:
                     self.spawn_powerup()
+# ---------------------------------------------------------
+# REN'PY STORE VARIABLES
+# ---------------------------------------------------------
+# These are the game objects Ren'Py will use at runtime.
+# ---------------------------------------------------------
+default chicken_click_game = None
+default powerup_system = None
+
+
+# ---------------------------------------------------------
+# SCREEN SECTION
+# ---------------------------------------------------------
+# This is NOT Python.
+# This is Ren'Py screen language, so it must stay outside
+# init python:.
+# ---------------------------------------------------------
+screen chicken_click_game_screen():
+
+    # Prevent clicking on screens behind the mini-game.
+    modal True
+
+    # Update the game roughly 60 times per second.
+    timer 0.0167 repeat True action Function(chicken_click_game.update, 0.0167)
+
+    fixed:
+        xsize GAME_WIDTH
+        ysize GAME_HEIGHT
+
+        # -------------------------------------------------
+        # ACTIVE GAMEPLAY VIEW
+        # -------------------------------------------------
+        if not chicken_click_game.replayscreen:
+
+            # Main background during play.
+            add Solid(PLAY_BG_COLOR):
+                xpos 0
+                ypos 0
+                xsize GAME_WIDTH
+                ysize GAME_HEIGHT
+
+            # Current score display.
+            text "Score: [chicken_click_game.score]":
+                xpos 20
+                ypos 20
+                size 34
+                color "#ffffff"
+                outlines [(2, "#000000", 0, 0)]
+
+            # Session best score display.
+            text "Best: [chicken_click_game.best_score]":
+                xpos 20
+                ypos 60
+                size 28
+                color "#ffffff"
+                outlines [(2, "#000000", 0, 0)]
+
+            # Show remaining boost time only while boost is active.
+            if powerup_system and powerup_system.boost_active:
+                text "Power-Up: [powerup_system.boost_time_left:.1f]":
+                    xpos 20
+                    ypos 100
+                    size 28
+                    color "#ffff00"
+                    outlines [(2, "#000000", 0, 0)]
+
+            # Draw all falling chickens.
+            for i in range(NUM_CHICKENS):
+
+                # While boosted, use the powered chicken sprite.
+                if powerup_system and powerup_system.boost_active:
+                    imagebutton:
+                        idle Transform(POWERED_CHICKEN_IMAGE, size=(CHICKEN_WIDTH, CHICKEN_HEIGHT))
+                        hover Transform(POWERED_CHICKEN_IMAGE, size=(CHICKEN_WIDTH, CHICKEN_HEIGHT))
+                        xpos int(chicken_click_game.startX[i])
+                        ypos int(chicken_click_game.startY[i])
+                        action Function(chicken_click_game.click_chicken, i)
+
+                # Otherwise use the normal sprite.
+                else:
+                    imagebutton:
+                        idle Transform(NORMAL_CHICKEN_IMAGE, size=(CHICKEN_WIDTH, CHICKEN_HEIGHT))
+                        hover Transform(NORMAL_CHICKEN_IMAGE, size=(CHICKEN_WIDTH, CHICKEN_HEIGHT))
+                        xpos int(chicken_click_game.startX[i])
+                        ypos int(chicken_click_game.startY[i])
+                        action Function(chicken_click_game.click_chicken, i)
+
+            # Draw the clickable power-up item if one is visible.
+            if powerup_system and powerup_system.active and not powerup_system.boost_active:
+                imagebutton:
+                    idle Transform(POWERUP_IMAGE, size=(POWERUP_WIDTH, POWERUP_HEIGHT))
+                    hover Transform(POWERUP_IMAGE, size=(POWERUP_WIDTH, POWERUP_HEIGHT))
+                    xpos int(powerup_system.x)
+                    ypos int(powerup_system.y)
+                    action Function(powerup_system.collect_powerup)
+
+        # -------------------------------------------------
+        # REPLAY / GAME OVER VIEW
+        # -------------------------------------------------
+        else:
+            add Solid(REPLAY_BG_COLOR):
+                xpos 0
+                ypos 0
+                xsize GAME_WIDTH
+                ysize GAME_HEIGHT
+
+            text "Play Again?":
+                xalign 0.5
+                ypos 120
+                size 100
+                color "#00c800"
+                outlines [(2, "#000000", 0, 0)]
+
+            text "Final Score: [chicken_click_game.score]":
+                xalign 0.5
+                ypos 260
+                size 42
+                color "#ffffff"
+                outlines [(2, "#000000", 0, 0)]
+
+            text "Best Score: [chicken_click_game.best_score]":
+                xalign 0.5
+                ypos 315
+                size 36
+                color "#ffffff"
+                outlines [(2, "#000000", 0, 0)]
+
+            # Restart the round.
+            textbutton "YES":
+                xpos GAME_WIDTH * 0.25 - 80
+                ypos 430
+                xsize 160
+                ysize 70
+                action Function(chicken_click_game.reset_game)
+
+            # Exit the mini-game and return to the story.
+            textbutton "NO":
+                xpos GAME_WIDTH * 0.75 - 80
+                ypos 430
+                xsize 160
+                ysize 70
+                action Return()
+
+            text "A chicken reached the bottom.":
+                xalign 0.5
+                ypos 370
+                size 34
+                color "#ffffff"
+                outlines [(2, "#000000", 0, 0)]
+
+
+# ---------------------------------------------------------
+# LABEL SECTION
+# ---------------------------------------------------------
+# This is what you call from your story script to launch
+# the mini-game.
+# ---------------------------------------------------------
+label chicken_click_game_start:
+
+    # Create a fresh game object and power-up system.
+    $ chicken_click_game = ChickenClickGame()
+    $ powerup_system = ChickenPowerUpSystem()
+
+    # Open the mini-game screen.
+    call screen chicken_click_game_screen
+
+    # This runs after the player exits with NO.
+    "You exited the Chicken Click Game."
+
+    return
